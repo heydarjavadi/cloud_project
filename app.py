@@ -1,74 +1,115 @@
 from flask import Flask, jsonify, request
 import requests
-# from flask_mysqldb import MySQL
 
-from flaskext.mysql import MySQL
+import mysql.connector
+from mysql.connector import Error
+from mysql.connector import errorcode
+
+try:
+    connection = mysql.connector.connect(host='localhost',
+                                     database='cloud',
+                                     user='root',
+                                     password='1234')
+
+except mysql.connector.Error as err:
+  if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+    print("Something is wrong with your user name or password")
+  elif err.errno == errorcode.ER_BAD_DB_ERROR:
+    print("Database does not exist")
+  else:
+    print(err)
 
 
 app = Flask(__name__)
 
-
-# app.config['MYSQL_HOST'] = 'localhost'
-# app.config['MYSQL_USER'] = 'root'
-# app.config['MYSQL_PASSWORD'] = '1234'
-# app.config['MYSQL_DB'] = 'cloud'
-
-app.config['MYSQL_DATABASE_USER'] = 'root'
-app.config['MYSQL_DATABASE_PASSWORD'] = '1234'
-app.config['MYSQL_DATABASE_DB'] = 'cloud'
-app.config['MYSQL_DATABASE_HOST'] = 'localhost'
-
-# mysql = MySQL(app)
-
-mysql = MySQL()
-mysql.init_app(app)
 
 @app.route('/heartbeat', methods=['GET','POST'])
 def heartbeat():
     return "Account Management is up and running"
 
 
-@app.route('/account/profile', methods=['GET','POST'])
+@app.route('/account/profile', methods=['GET','POST','PUT'])
 def account_profile():
     
-    # if request.method == "POST":
+    if request.method == "POST":
     
-    print(request.values)
-    email = request.values.get('email')
-    passw = request.values.get('password')
-    name = request.values.get('name')
-    phoneN = request.values.get('phoneNo')
-    nationalC = request.values.get('nationalCode')
-    address = request.values.get('address')
-    postalC = request.values.get('postalCode')
+        email = request.values.get('email')
+        passw = request.values.get('password')
+        name = request.values.get('name')
+        phoneN = request.values.get('phoneNo')
+        nationalC = request.values.get('nationalCode')
+        address = request.values.get('address')
+        postalC = request.values.get('postalCode')
 
-    print(email)
-    print(passw)
-
-    params = {
-    'email': email,
-    'password': passw
-    }
-    response = requests.post(
-      'http://localhost:2000/auth/v1/user/register',
-            data=params
-            )
-
-    cur = mysql.get_db().cursor()
-
-    if response.status_code == 200:
-    	print('Success!')
-    	command = "INSERT INTO users_profile(id, email,name,phoneNo,nationalCode,address,postalCode)"
-    	cur.execute(command+" VALUES (null, %s,%s,%d,%d,%s,%d)", (email, name,phoneN,nationalC,address,postalC))
-    else :
-    	print("fail")
-    	print(response.status_code)
+        name = name if name else 'null'
+        phoneN = phoneN if phoneN else 'null'
+        nationalC = nationalC if nationalC else 'null'
+        address = address if address else 'null'
+        postalC = postalC if postalC else 'null'
 
 
-    print(response.json()['message'])
-    
-    mysql.get_db.commit()
-    cur.close()
-    
+        params = {
+        'email': email,
+        'password': passw
+        }
+        register = requests.post(
+          'http://localhost:2000/auth/v1/user/register',
+                data=params
+                )
 
-    return jsonify(response.json())
+
+        if register.status_code == 200 or register.status_code == 201:
+
+            cursor = connection.cursor()
+            command = "INSERT INTO users_profile(id, email,name,phoneNo,nationalCode,address,postalCode)"
+            cursor.execute(command+" VALUES (null,'"+email+"', '"+name+"',"+phoneN+","+nationalC+",'"+address+"',"+postalC+");")
+            print(cursor.rowcount, "Record inserted successfully into cloud users_profile table")
+            user_id = cursor.lastrowid
+            connection.commit()
+            cursor.close()
+
+            cursor = connection.cursor()
+            command = "INSERT INTO users_wallet(id, profileID,value)"
+            cursor.execute(command+" VALUES (null,"+str(user_id)+",0)")
+            print(cursor.rowcount, "Record inserted successfully into cloud users_wallet table")
+
+            connection.commit()
+            cursor.close()
+
+
+            print('Success!')
+        else :
+            print("registeration failed")
+            print(register.status_code)
+            print(register.json()['message'])
+
+        login = requests.post(
+          'http://localhost:2000/auth/v1/user/login',
+                data=params
+                )
+        print(login.status_code)
+
+        if login.status_code == 200 :
+            print(login.json())
+            token = login.json()['token']
+
+        role = requests.get(
+          'http://localhost:2000/auth/v1/user/role',
+                params={},
+                headers={'Authorization': 'Bearer '+token},
+                )
+        
+        print(role.status_code)
+
+
+        return jsonify(login.json())
+
+    elif request.method == "PUT":
+
+        name = request.values.get('name')
+        phoneN = request.values.get('phoneNo')
+        nationalC = request.values.get('nationalCode')
+        address = request.values.get('address')
+        postalC = request.values.get('postalCode')
+
+

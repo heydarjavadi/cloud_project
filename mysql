@@ -1,14 +1,11 @@
+https://support.rackspace.com/how-to/install-mysql-server-on-the-ubuntu-operating-system/
+
 apt-get install mysql-server
-apt-get install libmysqlclient-dev
-
-https://stackoverflow.com/questions/7475223/mysql-config-not-found-when-installing-mysqldb-python-interface
-
-https://flask-mysql.readthedocs.io/en/latest/
-
-https://stackoverflow.com/questions/9845102/using-mysql-in-flask
 
 user:root
 pass:1234
+
+http://www.mysqltutorial.org/mysql-create-table/
 
 CREATE TABLE IF NOT EXISTS users_profile (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -19,3 +16,17 @@ CREATE TABLE IF NOT EXISTS users_profile (
     address VARCHAR(1000),
     postalCode INT
 );
+
+CREATE TABLE IF NOT EXISTS users_wallet (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    profileID INT,
+    value  INT NOT NULL,  
+    FOREIGN KEY (profileID)
+        REFERENCES users_profile (id) 
+        ON UPDATE RESTRICT ON DELETE CASCADE
+);
+
+pip install mysql-connector-python
+https://pynative.com/python-mysql-insert-data-into-database-table/
+
+
