@@ -93,18 +93,38 @@ def account_profile():
             print(login.json())
             token = login.json()['token']
 
+        return jsonify(login.json())
+
+    elif request.method == "GET":
+        auth_header = request.headers.get('Authorization')
+        if auth_header:
+            auth_token = auth_header.split(" ")[1]
+        else:
+            auth_token = ''
+
         role = requests.get(
           'http://localhost:2000/auth/v1/user/role',
                 params={},
-                headers={'Authorization': 'Bearer '+token},
+                headers={'Authorization': 'Bearer '+auth_token},
                 )
-        
-        print(role.status_code)
+        if role.status_code == 200 :
+            print(role.json())
+            email = role.json()['email']
 
-
-        return jsonify(login.json())
+            cursor = connection.cursor()
+            command = "select * from users_profile"
+            cursor.execute(command+" where email="+str(email))
+            data = cursor.fetchall()
+            print(data)
+            cursor.close()
+            return jsonify(data.json())
+        else 
+            return jsonify(role.json())
 
     elif request.method == "PUT":
+
+      
+        print(role.status_code)
 
         name = request.values.get('name')
         phoneN = request.values.get('phoneNo')
