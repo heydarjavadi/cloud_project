@@ -9,7 +9,8 @@ try:
     connection = mysql.connector.connect(host='localhost',
                                      database='cloud',
                                      user='root',
-                                     password='1234')
+                                     password=''
+                                     )
 
 except mysql.connector.Error as err:
   if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
@@ -27,6 +28,46 @@ app = Flask(__name__)
 def heartbeat():
     return "Account Management is up and running"
 
+
+@app.route('/account/wallet', methods=['GET'])
+def account_wallet():
+    if request.method == "GET":
+        auth_header = request.headers.get('Authorization')
+        if auth_header:
+            auth_token = auth_header.split(" ")[1]
+        else:
+            auth_token = ''
+
+        print(auth_token)
+
+        role = requests.get(
+          'http://localhost:2000/auth/v1/user/role',
+                params={},
+                headers={'Authorization': 'Bearer '+auth_token},
+                )
+        if role.status_code == 200 :
+            print(role.json())
+            email = role.json()['email']
+
+            cursor = connection.cursor()
+            command = "SELECT * FROM users_profile"
+            cursor.execute(command+" WHERE email='"+str(email)+"'")
+            data = cursor.fetchall()
+            print(data)
+
+            profileID = data[0][0]
+
+            print(profileID)
+
+            command = "SELECT * FROM users_wallet"
+            cursor.execute(command+" WHERE profileID="+str(profileID))
+            data = cursor.fetchall()
+            print(data)
+
+            cursor.close()
+            return jsonify({'value':data[0][2]})
+        else :
+            return jsonify(role.json())
 
 @app.route('/account/profile', methods=['GET','POST','PUT'])
 def account_profile():
@@ -62,7 +103,7 @@ def account_profile():
 
             cursor = connection.cursor()
             command = "INSERT INTO users_profile(id, email,name,phoneNo,nationalCode,address,postalCode)"
-            cursor.execute(command+" VALUES (null,'"+email+"', '"+name+"',"+phoneN+","+nationalC+",'"+address+"',"+postalC+");")
+            cursor.execute(command+" VALUES (null,'"+email+"', '"+name+"','"+phoneN+"','"+nationalC+"','"+address+"','"+postalC+"');")
             print(cursor.rowcount, "Record inserted successfully into cloud users_profile table")
             user_id = cursor.lastrowid
             connection.commit()
@@ -94,26 +135,6 @@ def account_profile():
             token = login.json()['token']
 
 
-        role = requests.get(
-          'http://localhost:2000/auth/v1/user/role',
-                params={},
-                headers={'Content_Type':'application/json','Authorization': 'Bearer '+token},
-                auth=('Authorization', 'Bearer '+token)
-                )
-
-        print("role status_code : "+str(role.status_code))
-        print(role.content)
-        print(role.request.headers)
-        print(role.request.body)
-
-        if role.status_code == 200 :
-            print(role.json())
-            email = role.json()['email']
-        else : 
-            print(role.json()['message'])
-
-
-
         return jsonify(login.json())
 
     elif request.method == "GET":
@@ -122,6 +143,8 @@ def account_profile():
             auth_token = auth_header.split(" ")[1]
         else:
             auth_token = ''
+
+        print(auth_token)
 
         role = requests.get(
           'http://localhost:2000/auth/v1/user/role',
@@ -134,11 +157,11 @@ def account_profile():
 
             cursor = connection.cursor()
             command = "SELECT * FROM users_profile"
-            cursor.execute(command+" WHERE email="+str(email))
+            cursor.execute(command+" WHERE email='"+str(email)+"'")
             data = cursor.fetchall()
             print(data)
             cursor.close()
-            return jsonify(data.json())
+            return jsonify({'profile':data})
         else :
             return jsonify(role.json())
 
@@ -168,18 +191,18 @@ def account_profile():
 
             cursor = connection.cursor()
             command = "UPDATE users_profile"
-            upd = " SET name ="+str(name)+", phoneNO ="+phoneN + ", nationalCode ="+ nationalCode + ", address ="+str(address) + ", postalCode ="+ postalCode
-            whr = "WHERE email = " + email
+            upd = " SET name ='"+str(name)+"', phoneNO ='"+phoneN + "', nationalCode ='"+ nationalC + "', address ='"+str(address) + "', postalCode ='"+ postalC+"'"
+            whr = " WHERE email = '" + email+"'"
+            print(command + upd + whr)
             cursor.execute(command + upd + whr)
-            print(data)
             connection.commit()
 
             command = "SELECT * FROM users_profile"
-            cursor.execute(command+" WHERE email="+str(email))
+            cursor.execute(command+" WHERE email='"+str(email)+"'")
             data = cursor.fetchall()
             print(data)
 
-            return jsonify(data.json())
+            return jsonify({'profile':data})
         else :
             return jsonify(role.json())
 
