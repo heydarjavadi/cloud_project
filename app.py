@@ -1,9 +1,105 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request,url_for, redirect
 import requests
+
+from suds.client import Client
+
 
 import mysql.connector
 from mysql.connector import Error
 from mysql.connector import errorcode
+
+app = Flask(__name__)
+
+
+MMERCHANT_ID = 'XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX'  # Required
+ZARINPAL_WEBSERVICE = 'https://sandbox.zarinpal.com/pg/services/WebGate/wsdl'  # Required
+amount = 1000  # Amount will be based on Toman  Required
+description = u'zarinpal test'  # Required
+email = 'user@userurl.ir'  # Optional
+mobile = '09153456789'  # Optional
+
+
+@app.route('/account/pay/', methods=['GET','POST'])
+def send_request():
+    if request.method == 'POST':
+
+        orderID = request.values.get('orderID')
+
+        auth_header = request.headers.get('Authorization')
+        if auth_header:
+            auth_token = auth_header.split(" ")[1]
+        else:
+            auth_token = ''
+
+        print(auth_token)
+
+        role = requests.get(
+          'http://localhost:2000/auth/v1/user/role',
+                params={},
+                headers={'Authorization': 'Bearer '+auth_token},
+                )
+
+        print("pay role status_code : "+str(role.status_code))
+
+        if role.status_code == 200 :
+            print(role.json())
+            email = role.json()['email']
+
+            cursor = connection.cursor()
+            command = "SELECT * FROM users_profile"
+            cursor.execute(command+" WHERE email='"+str(email)+"'")
+            data = cursor.fetchall()
+            print(data)
+
+            profileID = data[0][0]
+            mobile = data[0][3]
+
+            print(profileID)
+
+            command = "SELECT * FROM users_transaction"
+            cursor.execute(command+" WHERE profileID="+str(profileID) +" and orderID='"+orderID+"'")
+            data = cursor.fetchall()
+            print(data)
+            cursor.close()
+
+            amount = data[0][4]
+
+            print(amount,mobile,email)
+
+            client = Client(ZARINPAL_WEBSERVICE)
+            result = client.service.PaymentRequest(MMERCHANT_ID,
+                                                   amount,
+                                                   description,
+                                                   email,
+                                                   mobile,
+                                                   str(url_for('verify', _external=True)))
+            if result.Status == 100:
+                return redirect('https://sandbox.zarinpal.com/pg/StartPay/' + result.Authority)
+            else:
+                return 'Error'
+
+        else :
+            return jsonify(role.json())
+
+
+
+
+@app.route('/account/pay/callback', methods=['GET'])
+def verify():
+    client = Client(ZARINPAL_WEBSERVICE)
+    if request.args.get('Status') == 'OK':
+        result = client.service.PaymentVerification(MMERCHANT_ID,
+                                                    request.args['Authority'],
+                                                    amount)
+        if result.Status == 100:
+            return 'Transaction success. RefID: ' + str(result.RefID)
+        elif result.Status == 101:
+            return 'Transaction submitted : ' + str(result.Status)
+        else:
+            return 'Transaction failed. Status: ' + str(result.Status)
+    else:
+        return 'Transaction failed or canceled by user'
+
 
 try:
     connection = mysql.connector.connect(host='localhost',
@@ -21,13 +117,51 @@ except mysql.connector.Error as err:
     print(err)
 
 
-app = Flask(__name__)
 
 
-@app.route('/heartbeat', methods=['GET','POST'])
+@app.route('/account/heartbeat', methods=['GET','POST'])
 def heartbeat():
     return "Account Management is up and running"
 
+@app.route('/account/transaction', methods=['GET'])
+def account_transaction():
+    if request.method == "GET":
+        auth_header = request.headers.get('Authorization')
+        if auth_header:
+            auth_token = auth_header.split(" ")[1]
+        else:
+            auth_token = ''
+
+        print(auth_token)
+
+        role = requests.get(
+          'http://localhost:2000/auth/v1/user/role',
+                params={},
+                headers={'Authorization': 'Bearer '+auth_token},
+                )
+        if role.status_code == 200 :
+            print(role.json())
+            email = role.json()['email']
+
+            cursor = connection.cursor()
+            command = "SELECT * FROM users_profile"
+            cursor.execute(command+" WHERE email='"+str(email)+"'")
+            data = cursor.fetchall()
+            print(data)
+
+            profileID = data[0][0]
+
+            print(profileID)
+
+            command = "SELECT * FROM users_transaction"
+            cursor.execute(command+" WHERE profileID="+str(profileID))
+            data = cursor.fetchall()
+            print(data)
+
+            cursor.close()
+            return jsonify({'transactions':data})
+        else :
+            return jsonify(role.json())
 
 @app.route('/account/wallet', methods=['GET'])
 def account_wallet():
