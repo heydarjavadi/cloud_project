@@ -112,8 +112,8 @@ def account_profile():
             email = role.json()['email']
 
             cursor = connection.cursor()
-            command = "select * from users_profile"
-            cursor.execute(command+" where email="+str(email))
+            command = "SELECT * FROM users_profile"
+            cursor.execute(command+" WHERE email="+str(email))
             data = cursor.fetchall()
             print(data)
             cursor.close()
@@ -123,13 +123,43 @@ def account_profile():
 
     elif request.method == "PUT":
 
-      
-        print(role.status_code)
+        auth_header = request.headers.get('Authorization')
+        if auth_header:
+            auth_token = auth_header.split(" ")[1]
+        else:
+            auth_token = ''
 
-        name = request.values.get('name')
-        phoneN = request.values.get('phoneNo')
-        nationalC = request.values.get('nationalCode')
-        address = request.values.get('address')
-        postalC = request.values.get('postalCode')
+        role = requests.get(
+          'http://localhost:2000/auth/v1/user/role',
+                params={},
+                headers={'Authorization': 'Bearer '+auth_token},
+                )
+        if role.status_code == 200 :
+            print(role.json())
+            email = role.json()['email']
+
+            name = request.values.get('name')
+            phoneN = request.values.get('phoneNo')
+            nationalC = request.values.get('nationalCode')
+            address = request.values.get('address')
+            postalC = request.values.get('postalCode')
+
+
+            cursor = connection.cursor()
+            command = "UPDATE users_profile"
+            upd = " SET name ="+str(name)+", phoneNO ="+phoneN + ", nationalCode ="+ nationalCode + ", address ="+str(address) + ", postalCode ="+ postalCode
+            whr = "WHERE email = " + email
+            cursor.execute(command + upd + whr)
+            print(data)
+            connection.commit()
+
+            command = "SELECT * FROM users_profile"
+            cursor.execute(command+" WHERE email="+str(email))
+            data = cursor.fetchall()
+            print(data)
+
+            return jsonify(data.json())
+        else
+            return jsonify(role.json())
 
 
