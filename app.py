@@ -87,11 +87,32 @@ def account_profile():
           'http://localhost:2000/auth/v1/user/login',
                 data=params
                 )
-        print(login.status_code)
+        print("login status_code : "+str(login.status_code))
 
         if login.status_code == 200 :
             print(login.json())
             token = login.json()['token']
+
+
+        role = requests.get(
+          'http://localhost:2000/auth/v1/user/role',
+                params={},
+                headers={'Content_Type':'application/json','Authorization': 'Bearer '+token},
+                auth=('Authorization', 'Bearer '+token)
+                )
+
+        print("role status_code : "+str(role.status_code))
+        print(role.content)
+        print(role.request.headers)
+        print(role.request.body)
+
+        if role.status_code == 200 :
+            print(role.json())
+            email = role.json()['email']
+        else : 
+            print(role.json()['message'])
+
+
 
         return jsonify(login.json())
 
@@ -118,7 +139,7 @@ def account_profile():
             print(data)
             cursor.close()
             return jsonify(data.json())
-        else 
+        else :
             return jsonify(role.json())
 
     elif request.method == "PUT":
@@ -159,7 +180,7 @@ def account_profile():
             print(data)
 
             return jsonify(data.json())
-        else
+        else :
             return jsonify(role.json())
 
 
