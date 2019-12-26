@@ -10,4 +10,6 @@ pip install flask
 
 pip install requestes
 
+pip install suds-jurko
+
 ```
