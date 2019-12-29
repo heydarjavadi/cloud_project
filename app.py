@@ -257,6 +257,7 @@ def account_profile():
             print("registeration failed")
             print(register.status_code)
             print(register.json()['message'])
+            return(register.json())
 
         login = requests.post(
           'http://localhost:2000/auth/v1/user/login',
@@ -341,3 +342,5 @@ def account_profile():
             return jsonify(role.json())
 
 
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)

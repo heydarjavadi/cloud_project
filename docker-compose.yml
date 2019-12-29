@@ -1,0 +1,15 @@
+version: "2"
+services:
+  cloudproject_account_management_flask:
+    container_name: cloudproject_account_management_flask
+    restart: always
+    build: .
+    ports:
+      - "5000:5000"
+    links:
+      - mysql
+  mysql:
+    container_name: mysql
+    image: mysql
+    ports:
+      - "3306:3306"
