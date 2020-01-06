@@ -10,6 +10,7 @@ from mysql.connector import errorcode
 
 app = Flask(__name__)
 
+authentic_path = 'http://localhost:2000/authentiq/v1'
 
 MMERCHANT_ID = 'XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX'  # Required
 ZARINPAL_WEBSERVICE = 'https://sandbox.zarinpal.com/pg/services/WebGate/wsdl'  # Required
@@ -34,7 +35,7 @@ def send_request():
         print(auth_token)
 
         role = requests.get(
-          'http://localhost:2000/auth/v1/user/role',
+          authentic_path +'/user/role',
                 params={},
                 headers={'Authorization': 'Bearer '+auth_token},
                 )
@@ -135,7 +136,7 @@ def account_transaction():
         print(auth_token)
 
         role = requests.get(
-          'http://localhost:2000/auth/v1/user/role',
+          authentic_path + '/user/role',
                 params={},
                 headers={'Authorization': 'Bearer '+auth_token},
                 )
@@ -175,7 +176,7 @@ def account_wallet():
         print(auth_token)
 
         role = requests.get(
-          'http://localhost:2000/auth/v1/user/role',
+          authentic_path + '/user/role',
                 params={},
                 headers={'Authorization': 'Bearer '+auth_token},
                 )
@@ -228,12 +229,15 @@ def account_profile():
         'password': passw
         }
         register = requests.post(
-          'http://localhost:2000/auth/v1/user/register',
+          authentic_path + '/user/register',
                 data=params
                 )
 
 
         if register.status_code == 200 or register.status_code == 201:
+
+            print(register.json())
+            token = register.json()['token']
 
             cursor = connection.cursor()
             command = "INSERT INTO users_profile(id, email,name,phoneNo,nationalCode,address,postalCode)"
@@ -251,16 +255,18 @@ def account_profile():
             connection.commit()
             cursor.close()
 
+            return jsonify(token)
 
             print('Success!')
+
         else :
             print("registeration failed")
             print(register.status_code)
             print(register.json()['message'])
             return(register.json())
-
+        """
         login = requests.post(
-          'http://localhost:2000/auth/v1/user/login',
+          authentic_path + '/user/login',
                 data=params
                 )
         print("login status_code : "+str(login.status_code))
@@ -268,10 +274,9 @@ def account_profile():
         if login.status_code == 200 :
             print(login.json())
             token = login.json()['token']
+        """
 
-
-        return jsonify(login.json())
-
+        
     elif request.method == "GET":
         auth_header = request.headers.get('Authorization')
         if auth_header:
@@ -282,7 +287,7 @@ def account_profile():
         print(auth_token)
 
         role = requests.get(
-          'http://localhost:2000/auth/v1/user/role',
+          authentic_path + '/user/role',
                 params={},
                 headers={'Authorization': 'Bearer '+auth_token},
                 )
@@ -309,7 +314,7 @@ def account_profile():
             auth_token = ''
 
         role = requests.get(
-          'http://localhost:2000/auth/v1/user/role',
+          authentic_path + '/user/role',
                 params={},
                 headers={'Authorization': 'Bearer '+auth_token},
                 )
